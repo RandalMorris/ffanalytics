@@ -235,7 +235,6 @@ confidence_interval <- function(src_pts, weights = NULL){
     modify_depth(2, ~ get_quant(.x$points, .x$weight)) %>% modify_depth(3, t) %>%
     modify_depth(3, as.tibble) %>% modify_depth(2, bind_rows, .id  = "avg_type") %>%
     modify_depth(1, bind_rows, .id = "id") %>% bind_rows(.id = "pos") %>%
-    mutate(`5%` = ifelse(is.na(`5%`),` 5%`, `5%`)) %>% select(-` 5%`) %>%
     rename(floor = "5%", ceiling = "95%")
 }
 
@@ -486,7 +485,8 @@ projections_table <- function(data_result, scoring_rules = NULL, src_weights = N
   out_df %>%
     `attr<-`(which = "season", attr(data_result, "season")) %>%
     `attr<-`(which = "week", attr(data_result, "week")) %>%
-    `attr<-`(which = "lg_type", lg_type)
+    `attr<-`(which = "lg_type", lg_type) %>%
+    select(-V1)
 }
 
 #' Add ECR to the Projection Table
