@@ -89,15 +89,14 @@ scrape_cbs = function(pos = c("QB", "RB", "WR", "TE", "K", "DST"), season = 2021
 scrape_nfl = function(pos = c("QB", "RB", "WR", "TE", "K", "DST"), season = 2021, week = 0,
                       draft = TRUE, weekly = TRUE) {
 
-  pos_scrape = nfl_pos_idx[pos]
-
-  base_link = paste0("https://fantasy.nfl.com/research/projections?position=", pos_scrape[1],
+  pos_scrape = switch(pos,"QB"= 1,"RB"= 2,"WR"= 3,"TE"= 4,"K"= 7,"DST"= 8)  
+  base_link = paste0("https://fantasy.nfl.com/research/projections?position=", pos_scrape,
                      "&sort=projectedPts&statCategory=projectedStats&statSeason=", season,
                      "&statType=seasonProjectedStats")
   site_session = html_session(base_link)
 
   l_pos = lapply(pos, function(pos) {
-    pos_scrape = nfl_pos_idx[pos]
+    pos_scrape = switch(pos,"QB"= 1,"RB"= 2,"WR"= 3,"TE"= 4,"K"= 7,"DST"= 8)
     if(week == 0) {
       scrape_link = paste0("https://fantasy.nfl.com/research/projections?position=", pos_scrape,
                            "&sort=projectedPts&statCategory=projectedStats&statSeason=", season,
