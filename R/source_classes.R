@@ -428,7 +428,7 @@ html_source <- R6::R6Class(
         if(is.na(next_url))
           break
 
-        src_session <- src_session %>% jump_to(next_url)
+        src_session <- src_session %>% session_jump_to(next_url)
       }
 
       return(table_data)
