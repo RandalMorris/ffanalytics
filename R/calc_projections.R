@@ -5,8 +5,9 @@
 #' @param w The weights associated with each observation.
 #' @param na.rm If \code{TRUE}, then NA values will be removed.
 weighted.sd <- function(x, w, na.rm = FALSE){
+  len_x = length(x)
 
-  if(length(x) != length(w) || all(is.na(w))) {
+  if(len_x == 1 || len_x != length(w) || all(is.na(w))) {
     return(NA)
   }
 
@@ -16,20 +17,39 @@ weighted.sd <- function(x, w, na.rm = FALSE){
   sqrt((sum.w / (sum.w^2 - sum.w2)) * sum(w * (x - mean.w)^2))
 }
 
-#' Temp weighted quantile function
+#' Altered MAD function
 #'
-#' Temp weighted quantile function that removes zero-weight and NA's in w and x
-#' From: https://stats.stackexchange.com/questions/373269/why-does-this-simple-weighted-quantile-differ-from-hmiscwtd-quantile-which-me
-wtd_q = function(x, w, probs, na.rm = TRUE) {
+#' NA for length = 1 & an ignored weight function
+mad2 = function(x, center = median(x), constant = 1.4826, na.rm = FALSE,
+                low = FALSE, high = FALSE, w) {
+  if(length(x) %in% c(0, 1)) {
+    return(NA)
+  } else {
+    mad(x, center, constant, na.rm, low, high)
+  }
+}
 
-  w_zero = !(w == 0 | is.na(w))
-  isna_x = !is.na(x)
+#' Weighted Harrell-Davis quantile estimator
+#'
+#' From: https://aakinshin.net/posts/weighted-quantiles/
+whdquantile <- function(x, w = NA, probs, na.rm) { #na.rm is ignored
 
-  x = x[w_zero & isna_x]
-  w = w[w_zero & isna_x]
+  cdf.gen <- function(n, p) {
+    function(cdf.probs) {
+      pbeta(cdf.probs, (n + 1L) * p, (n + 1L) * (1L - p))
+    }
+  }
+
+  w_zero = !(w <= 0 | is.na(w))
+  x_non_na = !is.na(x)
+  x = x[w_zero & x_non_na]
+  w = w[w_zero & x_non_na]
 
   length_x = length(x)
   length_w = length(w)
+  if (length_x <= 1L) {
+    return(NA)
+  }
   if (length_w == 0L) {
     w = rep(1L, length_x)
   }
@@ -37,28 +57,29 @@ wtd_q = function(x, w, probs, na.rm = TRUE) {
     message("Length of x != length of w. NA returned")
     return(NA)
   }
-  if (length_x == 1L) {
-    return(NA)
-  }
 
-  d_wtd = density.default(x, weights = w / sum(w, na.rm = na.rm),
-                          n = length_x, na.rm = na.rm)
-  out = vapply(probs, function(p) {
-    idx = cumsum(d_wtd$y * (d_wtd$x[2L] - d_wtd$x[1L])) >= p
-    if (any(idx)) {
-      d_wtd$x[which.max(idx)]
-    }
-    else {
-      d_wtd$x[length(idx)]
-    }
+  nw <- sum(w)^2L / sum(w^2L) # Kish's effective sample size
+  idx <- order(x)
+  x <- x[idx]
+  w <- w[idx]
+
+  w <- w / sum(w)
+  cdf.probs <- cumsum(c(0, w))
+  names(probs) = sprintf("%1.0f%%", probs * 100)
+
+  vapply(probs, function(p) {
+    cdf <- cdf.gen(nw, p)
+    q <- cdf(cdf.probs)
+    w <- tail(q, -1L) - head(q, -1L)
+    sum(w * x)
   }, numeric(1L))
-  setNames(out, sprintf("%1.0f%%", probs * 100))
+
 }
 
 #' Wilcox Location Parameter
 #'
 #' Modified function to calculate Wilcox' Location paramenter
-wilcox.loc <- function(vec, na.rm = FALSE){
+wilcox.loc <- function(vec, na.rm = FALSE, w = NULL){
 
   # If number of observations is less than 2 then we just return mean as location estimate
   if(length(vec) <= 2){
@@ -113,7 +134,7 @@ default_weights <- c(CBS = 0.344, Yahoo = 0.400,  ESPN = 0.329,  NFL = 0.329,
 # source points. Used in the points_sd and confidence interval functions
 quant_funcs <- list(average = quantile,
                     robust = quantile,
-                    weighted = wtd_q)
+                    weighted = whdquantile)
 quant_args <- list(list(probs = c(0.05, 0.95)),  list(probs = c(0.05, 0.95)),
                    list(probs = c(0.05, 0.95)))
 
@@ -333,6 +354,7 @@ set_vor <- function(points_table, vor_baseline = NULL, vor_var = c("points", "fl
     rename(vor_var = !!vor_var) %>% group_by(pos) %>%
     mutate(vor_rank = dense_rank(-vor_var), vor_base = vor_baseline[pos]) %>%
     filter(vor_rank >= vor_base - 1 &  vor_rank <= vor_base + 1)  %>%
+    arrange(pos) %>%
     summarise(vor_base = mean(vor_var)) %>%  ungroup() %>%
     select(pos, vor_base) %>% inner_join(points_table, by = c("pos")) %>%
     rename(vor_var = !!vor_var) %>%
@@ -639,3 +661,243 @@ add_player_info <- function(projection_table){
     `attr<-`(which = "week", week) %>%
     `attr<-`(which = "lg_type", lg_type)
 }
+
+#' New, lighter, projections_table function
+#'
+#' Testing & improving now TO replace the current function in the next major app update
+projections_table2 = function(data_result, scoring_rules = NULL, src_weights = NULL,
+                              vor_baseline = NULL, tier_thresholds = NULL,
+                              avg_type = c("average", "robust", "weighted")) {
+
+  # Filling in missing arguments
+  if(is.null(scoring_rules)) {
+    scoring_rules = scoring
+  }
+  if(is.null(src_weights)) {
+    src_weights = default_weights
+  }
+  if(is.null(vor_baseline)) {
+    vor_baseline = default_baseline
+  }
+  if(is.null(tier_thresholds)) {
+    tier_thresholds = default_threshold
+  }
+
+  # Grabbing attributes
+  season = attr(data_result, "season")
+  week = attr(data_result, "week")
+
+  if(scoring_rules$rec$all_pos){
+    lg_type = rep(scoring_rules$rec$rec, length(data_result))
+    lg_type = case_when(lg_type > .5 ~ "PPR",
+                        lg_type > 0 ~ "Half",
+                        TRUE ~ "Std")
+    names(lg_type) = names(data_result)
+  } else {
+    lg_type = lapply(scoring_rules$rec[names(scoring_rules$rec) != "all_pos"], `[[`, "rec")
+    lg_type = Filter(Negate(is.null), lg_type)
+    lg_type = vapply(lg_type, function(x) if(x > .5) "PPR" else if(x > 0) "Half" else "Std", character(1L))
+    lg_type[setdiff(names(data_result), names(lg_type))] < "Std"
+  }
+
+
+  # Setting up the scoring table
+  scoring_l = vector("list", length(data_result))
+  names(scoring_l) = names(data_result)
+  all_pos_idx = unlist(lapply(scoring_rules, `[[`, "all_pos"))
+  l_pts_bracket = scoring_rules$pts_bracket
+  scoring_rules$pts_bracket = NULL
+
+  if(all(all_pos_idx)) { # if no custom scoring
+    scoring_table = dplyr::tibble(
+      category = rep(names(scoring_rules), times = lengths(scoring_rules)),
+      column = sub(".*?\\.", "", names(unlist(scoring_rules, recursive = FALSE))),
+      val = unlist(scoring_rules)
+    )
+    for(pos in names(scoring_l)) {
+      scoring_l[[pos]] = scoring_table
+    }
+  } else { # if there is custom scoring
+    custom_cols = names(all_pos_idx[!all_pos_idx])
+    for(pos in names(scoring_l)) {
+      temp_scoring = scoring_rules
+
+      for(col in custom_cols) { # if one column is custom, use it, else make NULL
+        if(pos %in% names(temp_scoring[[col]])) {
+          temp_scoring[[col]] = temp_scoring[[col]][[pos]]
+        } else {
+          temp_scoring[[col]] = NULL
+        }
+      }
+
+      scoring_table = dplyr::tibble(
+        category = rep(names(temp_scoring), times = lengths(temp_scoring)),
+        column = sub(".*?\\.", "", names(unlist(temp_scoring, recursive = FALSE))),
+        val = unlist(temp_scoring)
+      )
+      scoring_l[[pos]] = scoring_table
+    }
+  }
+
+  # temp until fix on walterfootball scrape
+  if("QB" %in% names(data_result) && "rec_tds" %in% names(data_result$QB)) {
+    data_result$QB$rush_tds = coalesce(data_result$QB$rush_tds, data_result$QB$rec_tds)
+    data_result$QB$rec_tds = NULL
+  }
+
+  # Imputing values
+  data_result = sapply(names(data_result), function(pos) {
+    df = data_result[[pos]]
+    df = df[!is.na(df$id), ]
+    df$weights = src_weights[df$data_src]
+    df_names = names(df)
+
+    # Kickers are weird
+    if(pos == "K") {
+      mis_cols = c("fg_miss_0019", "fg_miss_2029", "fg_miss_3039", "fg_miss_4049", "fg_miss_50")
+      fg_cols = c("fg_0019", "fg_2029", "fg_3039", "fg_4049", "fg_50", "fg_0039")
+
+      if(!("fg_miss" %in% df_names) && all(mis_cols %in% df_names)) {
+        df$fg_miss = rowSums(df[mis_cols], na.rm = TRUE)
+      }
+      if("fg" %in% df_names && anyNA(df$fg)) {
+        tot_cols = intersect(df_names, fg_cols)
+        idx = is.na(df$fg)
+        df$fg[idx] = rowSums(df[idx, tot_cols], na.rm = TRUE)
+      }
+      if(!"xp_att" %in% df_names) {
+        if(!"xp_miss" %in% df_names) {
+          df$xp_att = NA
+        } else {
+          df$xp_att = df$xp + df$xp_miss # if either are NA it returns NA
+        }
+      }
+      if(!"fg_miss" %in% df_names) {
+        df$fg_miss = NA
+      } else {
+        idx = is.na(df$fg_att)
+        df$fg_att[idx] = df$fg[idx] + df$fg_miss[idx]
+      }
+
+      if("fg_pct" %in% df_names) {
+        idx = is.na(df$fg_att)
+        df$fg_att[idx] = df$fg[idx] / (df$fg_pct[idx] * .01)
+      }
+    }
+
+    # intersecting column names (that have a non-zero scoring value)
+    impute_cols = intersect(df_names, scoring_table$column[scoring_table$val != 0])
+    impute_cols = names(Filter(anyNA, df[impute_cols])) # only grabbing columns with missing values
+
+    # Commented out for now to match old projections_table() function results
+    # if(pos == "DST") {
+    #   if(week == 0) {
+    #     score_pts_bracket(df$dst_pts_allowed / 17, l_pts_bracket)
+    #   } else {
+    #     score_pts_bracket(df$dst_pts_allowed, l_pts_bracket)
+    #   }
+    # }
+    df = group_by(df, id)
+    fun_names = names(fun_list)
+
+    for (col in impute_cols) {
+      if(col %in% fun_names) {
+        df = call_impute_fun(df, col)
+      } else {
+        df = mutate(df, !!col := derive_from_mean(!!as.symbol(col)))
+      }
+
+    }
+    df
+
+  }, simplify = FALSE)
+
+  # Scoring sources / totaling sources
+  l_raw_points = lapply(names(data_result), function(pos) {
+    scoring_table = scoring_l[[pos]]
+    cols = intersect(lapply(data_result, names)[[pos]], scoring_table$column) # grabbing scoring columns
+    scored_vals = mapply(`*`, data_result[[pos]][cols], scoring_table[match(cols, scoring_table$column), ]$val)
+    rowSums(scored_vals, na.rm = TRUE)
+  })
+
+  # Adding total to data_result object
+  data_result = Map(cbind, data_result, "raw_points" = l_raw_points)
+  l_avg_types = list()
+
+  # Calculating totals for each avg_type
+  for(type in avg_type) {
+
+    # Setting up avg_type summary function
+    if(type == "average") {
+      fun_avg = mean.default
+      fun_sd = function(x, na.rm = FALSE, w) sd(x, na.rm)
+      fun_quan = quantile
+    } else if(type == "robust") {
+      fun_avg = wilcox.loc
+      fun_sd = mad2
+      fun_quan = quantile
+    } else if(type == "weighted") {
+      fun_avg = weighted.mean
+      fun_sd = weighted.sd
+      fun_quan = whdquantile
+    }
+
+    l_avg_types[[type]] = sapply(names(data_result), function(pos) {
+
+      df = data_result[[pos]] %>%
+        summarise(pos = !!pos,
+                  points = fun_avg(raw_points, na.rm = TRUE, w = weights),
+                  sd_pts = fun_sd(raw_points, na.rm = TRUE, w = weights),
+                  drop_quantile = list(fun_quan(raw_points, c(.05, .95), na.rm = TRUE, w = weights)),
+                  floor = drop_quantile[[1]][1],
+                  ceiling = drop_quantile[[1]][2]) %>%
+        select(-drop_quantile) %>%
+        arrange(points)
+
+      pts_sd = median(df$sd_pts, na.rm = TRUE)
+      tier_thresh = tier_thresholds[pos]
+
+
+      df %>%
+        mutate(pos_rank = dense_rank(-points),
+               dropoff = c(NA_real_, diff(points))) %>%
+        arrange(desc(points)) %>%
+        mutate(tier = 1 + trunc((cumsum(dropoff) - dropoff[1]) / (pts_sd * tier_thresh)),
+               tier = dense_rank(tier)) %>%
+        filter(points > 0 & is.finite(points))
+
+    }, simplify = FALSE)
+
+
+  }
+
+  out = bind_rows(lapply(l_avg_types, bind_rows, .id = "pos"), .id = "avg_type")
+
+  # Adding VOR and rank
+  out$temp_vor_pos = default_baseline[out$pos]
+
+  out = out %>%
+    group_by(avg_type, pos) %>%
+    mutate(temp_floor_rank = dense_rank(-floor),
+           temp_ceiling_rank = dense_rank(-ceiling),
+           temp_vor_ref_points = points[which.max(pos_rank == temp_vor_pos)], # which.max in-case there are NA ranks
+           points_vor = points - temp_vor_ref_points,
+           temp_vor_ref_floor = floor[which.max(temp_floor_rank == temp_vor_pos)],
+           floor_vor = floor - temp_vor_ref_floor,
+           temp_vor_ref_ceiling = ceiling[which.max(temp_ceiling_rank == temp_vor_pos)],
+           ceiling_vor = ceiling - temp_vor_ref_ceiling) %>%
+    ungroup(pos) %>%
+    mutate(rank = dense_rank(-points_vor),
+           floor_rank = dense_rank(-floor_vor),
+           ceiling_rank = dense_rank(-ceiling_vor)) %>%
+    select(avg_type, id, pos, points, sd_pts, dropoff, floor, ceiling, points_vor,
+           floor_vor, ceiling_vor, rank, floor_rank, ceiling_rank, pos_rank, tier) %>%
+    ungroup()
+
+  attr(out, "season") = season
+  attr(out, "week") = week
+  attr(out, "lg_type") = lg_type
+  out
+}
+
+
