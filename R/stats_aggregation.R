@@ -35,6 +35,9 @@ stats_by_category <- function(data_results){
       map(summarise_at, vars(-one_of("id", "data_src")), mean, na.rm = TRUE) %>%
       map(ungroup) %>%
       map(impute_na_off)
+    data_cat[["pass"]][["pass_ypg"]] =(abs((data_cat[["pass"]][["pass_yds"]]/17)-100)+
+                            (data_cat[["pass"]][["pass_yds"]]/17)-100)/2
+    data_cat[["pass"]][["pass_ypg"]][is.na( data_cat[["pass"]][["pass_ypg"]])] <- 0
 
     data_cat <- append(data_cat,
                        map(list(misc = "^games$|^fum|^sac|^two", ret = "^ret" ),
