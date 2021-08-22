@@ -75,7 +75,8 @@ impute_na_off <- function(tbl){
     out_df <- out_df %>% val_from_calc(tbl, tds, att)
   }
 
-  out_df <- mutate(out_df, avg = ifelse(att == 0, 0, yds / att))
+  out_df <- mutate(out_df, avg = ifelse(att == 0, 0, yds / att),
+                   pass_ypg = (abs((pass_yds/17)-100)+(pass_yds/17)-100)/2)
 
   if(any(grepl("[0-9]{2,}_tds$", names(tbl)))){
     out_df <- out_df %>%
