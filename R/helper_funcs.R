@@ -395,3 +395,119 @@ extract_src_scrapes_from_scrape = function(data_result) {
 
 
 
+#' Cleans Raw Site Data by removing one off site columns
+#' Adds Player Info
+#'
+#'
+.RawDataClean <- function(position=c("QB", "RB","WR","TE","K","DST")){
+  for (x in 1:6) {
+
+    my_scrape[[position[x]]] = my_scrape2[[position[x]]] %>%
+      group_by(id) %>%
+      mutate(pass_att_avg = round(mean(pass_att[!is.na(pass_att)]), 2),
+             pass_comp_avg = round(mean(pass_comp[!is.na(pass_comp)]), 2),
+             rush_att_avg = round(mean(rush_att[!is.na(rush_att)]), 2),
+             fumbles_lost_avg = round(mean(fumbles_lost[!is.na(fumbles_lost)]), 2),
+             rec_tgt_avg = round(mean(rec_tgt[!is.na(rec_tgt)]), 2),
+             games = 17) %>%
+      mutate(pass_att = coalesce(pass_att, pass_att_avg),
+             pass_comp = coalesce(pass_comp, pass_comp_avg),
+             rush_att = coalesce(rush_att, rush_att_avg),
+             rec_tgt = coalesce(rec_tgt, rec_tgt_avg),
+             fumbles_lost = coalesce(fumbles_lost, fumbles_lost_avg),) %>%
+      mutate(pass_yds_g = round(pass_yds/games, 2),
+             rush_avg = round(rush_yds/rush_att, 2),
+             rec_avg = round(rec_yds/rec_tgt, 2),
+             rec_yds_g = round(rec_yds/games, 2),) %>%
+      select(-c(pass_att_avg, pass_comp_avg, rush_att_avg, rec_tgt_avg))
+
+    rbind(my_scrape[[position[x]]]) %>%
+      add_player_info() %>%
+      mutate(player= paste(first_name,last_name)) %>%
+      assign(paste(position[x]), ., envir = .GlobalEnv)
+
+    if (position[x] == "QB"){
+      keeps_qb <- c("id", "player", "team.y", "pos", "data_src",
+                    "pass_att", "pass_comp",  "pass_yds", "pass_int", "pass_tds", "sacks",
+                    "rush_att", "rush_yds", "rush_avg", "rush_tds",
+                    "fumbles_lost","two_pts")
+      QB <- subset(QB, select=keeps_qb) %>%
+        mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>%
+        rename("name" = 2, "team" = 3, "position" = 4) %>%
+        add_column(pass_ypa = 0,pass_ypc =0, .before = "pass_tds") %>%
+        dplyr::group_by(name,data_src) %>%
+        mutate(rush_avg   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0),
+               pass_ypa   = case_when(pass_att > 0 ~ round((pass_yds/pass_att),2), pass_att < 1 ~ 0, FALSE ~ 0),
+               pass_ypc   = case_when(pass_comp > 0 ~ round((pass_yds/pass_comp),2), pass_comp < 1 ~ 0, FALSE ~ 0),
+               pass_comp_pct= case_when(pass_att > 0 ~ round((pass_comp/pass_att),2)*100, pass_att < 1 ~ 0, FALSE ~ 0),
+               rush_tds   = case_when(rush_tds > 0 ~ rush_tds, rush_tds < 1 ~ rush_tds, FALSE ~ 0),) %>%
+        ungroup() %>%
+        assign(paste(position[x]), ., envir = .GlobalEnv)
+    } else if (position[x] == "RB"){
+      keeps_rec <- c("id", "player", "team.y", "pos", "data_src",
+                     "rush_att", "rush_yds", "rush_avg", "rush_tds",
+                     "rec", "rec_tgt", "rec_yds", "rec_yds_g", "rec_avg", "rec_tds",
+                     "fumbles_lost","two_pts")
+      RB <-subset(RB, select=keeps_rec) %>%
+        mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>%
+        rename("name" = 2, "team" = 3, "position" = 4) %>%
+        add_column(rush_ypc = 0, .before = "rush_tds") %>% dplyr::group_by(name,data_src) %>%
+        mutate(rush_avg   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0),
+               rush_ypc   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0),
+               rec_avg    = case_when(rec > 0 ~ round((rec_yds/rec),2), rec < 1 ~ 0, FALSE ~ 0),) %>%
+        ungroup() %>%
+        assign(paste(position[x]), ., envir = .GlobalEnv)
+    } else if (position[x] == "WR"){
+      keeps_rec <- c("id", "player", "team.y", "pos", "data_src",
+                     "rush_att", "rush_yds", "rush_avg", "rush_tds",
+                     "rec", "rec_tgt", "rec_yds", "rec_yds_g", "rec_avg", "rec_tds",
+                     "fumbles_lost","two_pts")
+      WR <- subset(WR, select=keeps_rec) %>%
+        mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>%
+        rename("name" = 2, "team" = 3, "position" = 4) %>%
+        add_column(rush_ypc = 0, .before = "rush_tds") %>% dplyr::group_by(name,data_src) %>%
+        mutate(rush_avg   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0),
+               rush_ypc   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0),
+               rec_avg    = case_when(rec > 0 ~ round((rec_yds/rec),2), rec < 1 ~ 0, FALSE ~ 0),) %>%
+        ungroup() %>%
+        assign(paste(position[x]), ., envir = .GlobalEnv)
+    } else if (position[x] == "TE"){
+      keeps_te <- c("id", "player", "team.y", "pos", "data_src",
+                    "rush_att", "rush_yds", "rush_tds",
+                    "rec", "rec_tgt", "rec_yds", "rec_yds_g", "rec_avg", "rec_tds",
+                    "fumbles_lost")
+      TE <- subset(TE, select=keeps_te) %>%
+        mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>%
+        rename("name" = 2, "team" = 3, "position" = 4) %>%
+        dplyr::group_by(name,data_src) %>%
+        mutate(rec_avg    = case_when(rec > 0 ~ round((rec_yds/rec),2), rec < 1 ~ 0, FALSE ~ 0),) %>%
+        ungroup() %>%
+        assign(paste(position[x]), ., envir = .GlobalEnv)
+    } else if (position[x] == "K"){
+      keeps_k <- c("id", "player", "team.y", "pos", "data_src",
+                   "fg_att", "fg", "fg_miss", "FG%", "xp_att", "xp", "xp_miss", "XP%")
+      K <- mutate_if(K, is.numeric, ~replace(., is.na(.), 0)) %>%
+        mutate(fg_miss = fg_att-fg, 'FG%' = round((fg/fg_att)*100,2),
+               xp_miss=xp_att-xp, 'XP%'=round((xp/xp_att)*100,2)) %>%
+        subset(., select=keeps_k) %>%
+        rename("name" = 2, "team" = 3, "position" = 4) %>%
+        assign(paste(position[x]), ., envir = .GlobalEnv)
+    } else if (position[x] == "DST"){
+      keeps_dst <- c("id", "player", "team.y", "position", "data_src",
+                     "dst_int", "dst_safety", "dst_sacks", "dst_tackles", "dst_fum_rec", "dst_fum_force",
+                     "dst_td", "dst_pts_allowed", "dst_pts_allowed_g", "dst_pass_yds_allowed",
+                     "dst_rush_yds_allowed","dst_yds_allowed","dst_avg_yds_allowed")
+      DST <- DST %>%
+        mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>%
+        subset(., select=keeps_dst) %>%
+        rename("name" = 2, "team" = 3, "position" = 4) %>%
+        assign(paste(position[x]), ., envir = .GlobalEnv)
+    }
+  }
+  #create detail data file
+  DataAllOff <<- plyr::rbind.fill(QB,RB,WR,TE,DST) %>%
+    filter(position %in% c("QB", "RB","WR","TE","K","DST")) %>%
+    mutate_all(~replace(., is.na(.), 0))
+  write.csv(DataAllOff, file = paste(getwd(),"/Data/Raw Site Data.csv", sep=""), row.names=FALSE)
+
+}
