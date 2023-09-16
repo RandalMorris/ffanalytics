@@ -17,9 +17,9 @@ my_scrape <- ffanalytics::scrape_data(src = c("CBS", "ESPN", "FantasyPros", "Fan
                          week = NULL) # NULL grabs the current week
 
 
-my_scrape1 = my_scrape %>%
-  ffanalytics::.scrape_sleeper(data = .) %>%
-  ffanalytics::.scrape_fantasyfootballnerd(data = .)
+my_scrape = my_scrape %>%
+  ffanalytics:::.scrape_sleeper(data = .) %>%
+  ffanalytics:::.scrape_fantasyfootballnerd(data = .)
 
 my_projections <<- ffanalytics::projections_table(my_scrape, avg_type = "average",
                                                   scoring_rules = NarFFL_Scoring) %>%
@@ -35,4 +35,4 @@ my_projections <<- ffanalytics::projections_table(my_scrape, avg_type = "average
            floor_vor, ceiling_vor, rank, floor_rank, ceiling_rank, pos_rank, tier, pos_ecr,
            sd_ecr, uncertainty))
 
-ffanalytics::.Graphs()
+ffanalytics:::.Graphs()
