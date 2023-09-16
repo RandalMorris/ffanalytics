@@ -213,10 +213,10 @@ extract_src_scrapes_from_scrape = function(data_result) {
 
   cat("",sep = "\n")
   cat("Scraping Fantasy Nerd Weekly")
-  FantasyNerds_QB = read.csv(paste0("C:/Users/morrr/Downloads/FantasyNerds_Week",week,"_QB_Projections.csv"),na = "0")
-  FantasyNerds_RB = read.csv(paste0("C:/Users/morrr/Downloads/FantasyNerds_Week",week,"_RB_Projections.csv"),na = "0")
-  FantasyNerds_WR = read.csv(paste0("C:/Users/morrr/Downloads/FantasyNerds_Week",week,"_WR_Projections.csv"),na = "0")
-  FantasyNerds_TE = read.csv(paste0("C:/Users/morrr/Downloads/FantasyNerds_Week",week,"_TE_Projections.csv"),na = "0")
+  FantasyNerds_QB = read.csv(paste0("/home/randal/Projects/AnalyticsFootball/data/FantasyNerds_Week",week,"_QB_Projections.csv"),na = "0")
+  FantasyNerds_RB = read.csv(paste0("/home/randal/Projects/AnalyticsFootball/data/FantasyNerds_Week",week,"_RB_Projections.csv"),na = "0")
+  FantasyNerds_WR = read.csv(paste0("/home/randal/Projects/AnalyticsFootball/data/FantasyNerds_Week",week,"_WR_Projections.csv"),na = "0")
+  FantasyNerds_TE = read.csv(paste0("/home/randal/Projects/AnalyticsFootball/data/FantasyNerds_Week",week,"_TE_Projections.csv"),na = "0")
 
   FantasyNerds_QB$position = "QB"
   FantasyNerds_RB$position = "RB"
