@@ -402,7 +402,7 @@ extract_src_scrapes_from_scrape = function(data_result) {
 .RawDataClean <- function(position=c("QB", "RB","WR","TE","K","DST")){
   for (x in 1:6) {
 
-    my_scrape[[position[x]]] = my_scrape2[[position[x]]] %>%
+    my_scrape[[position[x]]] = my_scrape[[position[x]]] %>%
       group_by(id) %>%
       mutate(pass_att_avg = round(mean(pass_att[!is.na(pass_att)]), 2),
              pass_comp_avg = round(mean(pass_comp[!is.na(pass_comp)]), 2),
