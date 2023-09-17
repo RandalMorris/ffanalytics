@@ -399,10 +399,10 @@ extract_src_scrapes_from_scrape = function(data_result) {
 #' Adds Player Info
 #'
 #'
-.RawDataClean <- function(position=c("QB", "RB","WR","TE","K","DST")){
+.RawDataClean <- function(data = my_scrape, position=c("QB", "RB","WR","TE","K","DST")){
   for (x in 1:6) {
 
-    my_scrape[[position[x]]] = my_scrape[[position[x]]] %>%
+    data[[position[x]]] = data[[position[x]]] %>%
       group_by(id) %>%
       mutate(pass_att_avg = round(mean(pass_att[!is.na(pass_att)]), 2),
              pass_comp_avg = round(mean(pass_comp[!is.na(pass_comp)]), 2),
@@ -421,7 +421,7 @@ extract_src_scrapes_from_scrape = function(data_result) {
              rec_yds_g = round(rec_yds/games, 2),) %>%
       select(-c(pass_att_avg, pass_comp_avg, rush_att_avg, rec_tgt_avg))
 
-    rbind(my_scrape[[position[x]]]) %>%
+    rbind(data[[position[x]]]) %>%
       add_player_info() %>%
       mutate(player= paste(first_name,last_name)) %>%
       assign(paste(position[x]), ., envir = .GlobalEnv)
