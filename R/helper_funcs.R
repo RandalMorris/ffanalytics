@@ -408,18 +408,16 @@ extract_src_scrapes_from_scrape = function(data_result) {
              pass_comp_avg = round(mean(pass_comp[!is.na(pass_comp)]), 2),
              rush_att_avg = round(mean(rush_att[!is.na(rush_att)]), 2),
              fumbles_lost_avg = round(mean(fumbles_lost[!is.na(fumbles_lost)]), 2),
-             rec_tgt_avg = round(mean(rec_tgt[!is.na(rec_tgt)]), 2),
              games = 17) %>%
       mutate(pass_att = coalesce(pass_att, pass_att_avg),
              pass_comp = coalesce(pass_comp, pass_comp_avg),
              rush_att = coalesce(rush_att, rush_att_avg),
-             rec_tgt = coalesce(rec_tgt, rec_tgt_avg),
              fumbles_lost = coalesce(fumbles_lost, fumbles_lost_avg),) %>%
       mutate(pass_yds_g = round(pass_yds/games, 2),
              rush_avg = round(rush_yds/rush_att, 2),
              rec_avg = round(rec_yds/rec_tgt, 2),
              rec_yds_g = round(rec_yds/games, 2),) %>%
-      select(-c(pass_att_avg, pass_comp_avg, rush_att_avg, rec_tgt_avg))
+      select(-c(pass_att_avg, pass_comp_avg, rush_att_avg))
 
     rbind(data[[position[x]]]) %>%
       add_player_info() %>%
