@@ -415,7 +415,6 @@ extract_src_scrapes_from_scrape = function(data_result) {
              fumbles_lost = coalesce(fumbles_lost, fumbles_lost_avg),) %>%
       mutate(pass_yds_g = round(pass_yds/games, 2),
              rush_avg = round(rush_yds/rush_att, 2),
-             rec_avg = round(rec_yds/rec_tgt, 2),
              rec_yds_g = round(rec_yds/games, 2),) %>%
       select(-c(pass_att_avg, pass_comp_avg, rush_att_avg))
 
@@ -444,41 +443,38 @@ extract_src_scrapes_from_scrape = function(data_result) {
     } else if (position[x] == "RB"){
       keeps_rec <- c("id", "player", "team.y", "pos", "data_src",
                      "rush_att", "rush_yds", "rush_avg", "rush_tds",
-                     "rec", "rec_tgt", "rec_yds", "rec_yds_g", "rec_avg", "rec_tds",
+                     "rec", "rec_yds", "rec_yds_g", "rec_tds",
                      "fumbles_lost","two_pts")
       RB <-subset(RB, select=keeps_rec) %>%
         mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>%
         rename("name" = 2, "team" = 3, "position" = 4) %>%
         add_column(rush_ypc = 0, .before = "rush_tds") %>% dplyr::group_by(name,data_src) %>%
         mutate(rush_avg   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0),
-               rush_ypc   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0),
-               rec_avg    = case_when(rec > 0 ~ round((rec_yds/rec),2), rec < 1 ~ 0, FALSE ~ 0),) %>%
+               rush_ypc   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0))
         ungroup() %>%
         assign(paste(position[x]), ., envir = .GlobalEnv)
     } else if (position[x] == "WR"){
       keeps_rec <- c("id", "player", "team.y", "pos", "data_src",
                      "rush_att", "rush_yds", "rush_avg", "rush_tds",
-                     "rec", "rec_tgt", "rec_yds", "rec_yds_g", "rec_avg", "rec_tds",
+                     "rec", "rec_yds", "rec_tds",
                      "fumbles_lost","two_pts")
       WR <- subset(WR, select=keeps_rec) %>%
         mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>%
         rename("name" = 2, "team" = 3, "position" = 4) %>%
         add_column(rush_ypc = 0, .before = "rush_tds") %>% dplyr::group_by(name,data_src) %>%
         mutate(rush_avg   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0),
-               rush_ypc   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0),
-               rec_avg    = case_when(rec > 0 ~ round((rec_yds/rec),2), rec < 1 ~ 0, FALSE ~ 0),) %>%
+               rush_ypc   = case_when(rush_att > 0 ~ round((rush_yds/rush_att),2), rush_att < 1 ~ 0, FALSE ~ 0)) %>%
         ungroup() %>%
         assign(paste(position[x]), ., envir = .GlobalEnv)
     } else if (position[x] == "TE"){
       keeps_te <- c("id", "player", "team.y", "pos", "data_src",
                     "rush_att", "rush_yds", "rush_tds",
-                    "rec", "rec_tgt", "rec_yds", "rec_yds_g", "rec_avg", "rec_tds",
+                    "rec", "rec_tgt", "rec_yds", "rec_tds",
                     "fumbles_lost")
       TE <- subset(TE, select=keeps_te) %>%
         mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>%
         rename("name" = 2, "team" = 3, "position" = 4) %>%
         dplyr::group_by(name,data_src) %>%
-        mutate(rec_avg    = case_when(rec > 0 ~ round((rec_yds/rec),2), rec < 1 ~ 0, FALSE ~ 0),) %>%
         ungroup() %>%
         assign(paste(position[x]), ., envir = .GlobalEnv)
     } else if (position[x] == "K"){
