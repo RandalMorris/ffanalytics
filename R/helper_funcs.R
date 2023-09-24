@@ -330,25 +330,25 @@ extract_src_scrapes_from_scrape = function(data_result) {
 
 
 #'Create Graphs for user
-.Graphs <- function(){
+.Graphs <- function(usecase=NULL){
 
-
-  .graph_func(pos="QB", pos_txt="Quarter Back", rlim = 32, xlim=25)
-  .graph_func(pos="RB", pos_txt="Running Back", rlim = 75, xlim=25)
-  .graph_func(pos="WR", pos_txt="Wide Receiver", rlim = 75, xlim=25)
-  .graph_func(pos="TE", pos_txt="Tight End", rlim = 40, xlim=25)
-  .graph_func(pos="K", pos_txt="Kicker", rlim = 32, xlim=25)
-  .graph_func(pos="DST", pos_txt="Defense", rlim = 32, xlim=25)
+  usecase = usecase
+  .graph_func(pos="QB", pos_txt="Quarter Back", rlim = 32, xlim=25, usecase=usecase)
+  .graph_func(pos="RB", pos_txt="Running Back", rlim = 75, xlim=25, usecase=usecase)
+  .graph_func(pos="WR", pos_txt="Wide Receiver", rlim = 75, xlim=25, usecase=usecase)
+  .graph_func(pos="TE", pos_txt="Tight End", rlim = 40, xlim=25, usecase=usecase)
+  .graph_func(pos="K", pos_txt="Kicker", rlim = 32, xlim=25, usecase=usecase)
+  .graph_func(pos="DST", pos_txt="Defense", rlim = 32, xlim=25, usecase=usecase)
 
 }
 
 #'Base Graph Set
 
-.graph_func <- function(pos, pos_txt, rlim, xlim){
+.graph_func <- function(pos, pos_txt, rlim, xlim, usecase){
 
   season = ffanalytics:::get_scrape_year()
   varweek = ffanalytics:::get_scrape_week()
-  usecase = "NarFFL"
+  usecase = usecase
 
   ffproj <<- my_projections %>%
     dplyr::filter(position == pos & !is.na(floor)) %>%
