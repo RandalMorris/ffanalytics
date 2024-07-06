@@ -127,6 +127,16 @@ final_espn = scrape_espn %>%
             espn_id = src_id,
             id)
 
+#### Sleeper ----
+
+final_sleeper <- ffscrapr::sleeper_players() %>%
+  filter(status == "Active", team != "FA") %>%
+  rename(sleeper_id = player_id, merge_id = player_name) %>%
+  mutate(merge_id = tolower(gsub('[[:punct:]]','', merge_id)),
+         merge_id = gsub(" ", "", merge_id),
+         merge_id = paste0(merge_id,"_",tolower(pos))) %>%
+  select(sleeper_id, merge_id)
+
 
 # Cleaning up above scrapes
 
@@ -139,7 +149,7 @@ gc()
 
 curr_ids = ffanalytics:::player_ids
 
-my_fl_ids = httr::GET("https://api.myfantasyleague.com/2023/export?TYPE=players&L=&APIKEY=&DETAILS=1&SINCE=&PLAYERS=&JSON=1") %>%
+my_fl_ids = httr::GET("https://api.myfantasyleague.com/2024/export?TYPE=players&L=&APIKEY=&DETAILS=1&SINCE=&PLAYERS=&JSON=1") %>%
   httr::content() %>%
   `[[`("players") %>%
   `[[`("player") %>%
@@ -159,14 +169,7 @@ updated_ids = my_fl_ids %>%
          merge_id = paste0(merge_id, "_", tolower(position)))
 
 new_ids = mget(ls(pattern = "^final"))
-new_ids = Reduce(function(x, y) {
-  full_join(x, y, "merge_id") %>%
-    mutate(id = case_when(
-      !is.na(id.x) & !is.na(id.y) & id.x != id.y ~ NA_character_,
-      TRUE ~ coalesce(id.x, id.y)
-      )) %>%
-    select(-id.x, -id.y)
-}, new_ids) %>%
+new_ids = Reduce(function(x, y) full_join(x, y, "merge_id"), new_ids) %>%
   filter(!grepl("_(dst|def)$", merge_id)) %>%
   distinct()
 
@@ -183,17 +186,16 @@ for(j in curr_cols) {
     updated_name = paste0(j, "_updated")
     names(df_updated)[3] = updated_name
 
-    df_new = new_ids[!is.na(new_ids[[j]]) & !is.na(new_ids$id), c("id", "merge_id", j)]
+    df_new = new_ids[!is.na(new_ids[[j]]), c("merge_id", j)]
     new_name = paste0(j, "_new")
-    names(df_new)[3] = new_name
+    names(df_new)[2] = new_name
 
     curr_ids = curr_ids %>%
       full_join(df_updated, "id") %>%
-      left_join(distinct(select(df_new, -id)), "merge_id") %>%
-      left_join(distinct(select(df_new, -merge_id)), "id")
+      left_join(df_new, "merge_id")
 
-    curr_ids[[j]] = do.call(dplyr::coalesce, curr_ids[grepl(j, names(curr_ids), fixed = TRUE)])
-    curr_ids[grep(paste0(j, "_.+|merge_id"), names(curr_ids))] = NULL
+    curr_ids[[j]] = coalesce(curr_ids[[j]], curr_ids[[updated_name]], curr_ids[[new_name]])
+    curr_ids[c(updated_name, new_name, "merge_id")] = NULL
 
   } else if(j %in% names(updated_ids)) {
 
@@ -211,21 +213,39 @@ for(j in curr_cols) {
 
     df_updated = updated_ids[c("id", "merge_id")]
 
-    df_new = new_ids[!is.na(new_ids[[j]]) & !is.na(new_ids$id), c("id", "merge_id", j)]
+    df_new = new_ids[c("merge_id", j)]
     new_name = paste0(j, "_new")
-    names(df_new)[3] = new_name
+    names(df_new)[2] = new_name
 
     curr_ids = curr_ids %>%
       full_join(df_updated, "id") %>%
-      left_join(distinct(select(df_new, -id)), "merge_id") %>%
-      left_join(distinct(select(df_new, -merge_id)), "id")
+      left_join(df_new, "merge_id")
 
 
-    curr_ids[[j]] = do.call(dplyr::coalesce, curr_ids[grepl(j, names(curr_ids), fixed = TRUE)])
-    curr_ids[grep(paste0(j, "_.+|merge_id"), names(curr_ids))] = NULL
+    curr_ids[[j]] = coalesce(curr_ids[[j]], curr_ids[[new_name]])
+    curr_ids[c(new_name, "merge_id")] = NULL
+
+  }
+
+  if(j == "sleeper_id") {
+
+    df_updated = updated_ids[c("id", "merge_id")]
+
+    df_new = new_ids[c("merge_id", j)]
+    new_name = paste0(j, "_new")
+    names(df_new)[2] = new_name
+
+    curr_ids = curr_ids %>%
+      full_join(df_updated, "id") %>%
+      left_join(df_new, "merge_id")
+
+    curr_ids[[j]] = curr_ids[[new_name]]
+    curr_ids[c(new_name, "merge_id")] = NULL
 
   }
 }
+
+curr_ids <- curr_ids %>% distinct()
 
 
 # Run necessary QA. Looks at the data. Etc..

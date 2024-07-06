@@ -995,12 +995,13 @@ scrape_fantasypros = function(pos = c("QB", "RB", "WR", "TE", "K", "DST"),
       col_names = trimws(paste(col_names[1, ], col_names[2, ]))
       col_names = rename_vec(col_names, fantasypros_columns)
     }
-
+    #data > tbody > tr.mpb-player-19275.js-tr-game-select
     # Get PID
     fantasypro_num_id = html_page %>%
-      rvest::html_elements("table > tbody > tr > td.player-label > a:nth-child(2)") %>%
+      rvest::html_elements("table > tbody > tr") %>%
       rvest::html_attr("class") %>%
-      sub(".+\\-", "", .)
+      sub(".*?(\\d{4,6}).*", "\\1", .)
+    fantasypro_num_id = fantasypro_num_id[!is.na(fantasypro_num_id)]
 
     # Creating and cleaning table
     out_df = html_page %>%
@@ -1194,6 +1195,11 @@ scrape_espn = function(pos = c("QB", "RB", "WR", "TE", "K", "DST"), season = NUL
     l_players = vector("list", length(espn_json))
 
     for(i in seq_along(espn_json)) {
+
+      # Checking for empty stats (bye weeks)
+      if(length(espn_json[[i]]$player$stats) == 0L) {
+        next
+      }
 
       # Player stats (only those on)
       l_players[[i]] = espn_json[[i]]$player$stats[[1]]$stats
