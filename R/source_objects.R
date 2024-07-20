@@ -555,13 +555,31 @@ espn_team_nums = c(
   "29" = "CAR", "30" = "JAC", "33" = "BAL", "34" = "HOU"
 )
 
+# Sleeper ----
 
+sleeper_columns = c(
 
-
-
-
-
-
-
-
-
+  "id" = "src_id",
+  "player" = "player",
+  "team" = "team",
+  "position" = "pos",
+  "opponent" = "opp",
+  "pass_att" = "pass_att",
+  "pass_yd" = "pass_yds",
+  "pass_cmp" = "pass_comp",
+  "pass_td" = "pass_tds",
+  "pass_int" = "pass_int",
+  "rush_att" = "rush_att",
+  "rush_yd" = "rush_yds",
+  "rush_td" = "rush_tds",
+  "fum_lost" = "fumbles_lost",
+  "pass_2pt" = "two_pts",
+  "rush_2pt" = "two_pts",
+  "Misc 2PT" = "two_pts",
+  "gp" = "games",
+  "rec" = "rec",
+  "rec_yd" = "rec_yds",
+  "rec_td" = "rec_tds",
+  "def_kr_td" = "return_tds",
+  "pts_std" = "site_pts"
+)

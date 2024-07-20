@@ -1285,7 +1285,68 @@ scrape_yahoo = function(pos = NULL, season = NULL, week = NULL,
 }
 
 
+# Sleeper ----
+scrape_sleeper = function(pos = c("QB", "RB", "WR", "TE"), season = NULL, week = NULL,
+                          draft = TRUE, weekly = FALSE) {
+  message("\nThe Sleeper scrape uses a 2 second delay between pages")
 
+  if(is.null(season)) {
+    season = get_scrape_year()
+  }
+  if(is.null(week)) {
+    week = get_scrape_week()
+  }
+
+  base_url = paste0("https://api.sleeper.com/projections/nfl/", season)
+
+  # url = paste0(base_url, season, "?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE")
+
+  drop_cols = c("opponent", "company", "updated_at", "game_id", "sport", "season_type", "last_modified", "category",
+                "date", "player.team_abbr", "player.team", "player.news_updated", "player.fantasy_positions",
+                "player.metadata.channel_id",
+                "player.metadata.source_id",
+                "player.metadata.override_active",
+                "player.metadata.years_exp_shift")
+
+  l_pos <- lapply(pos, function(pos){
+
+    url = paste0(base_url, "?season_type=regular&position[]=", pos)
+    cat(paste0("Scraping ", pos, " projections from"), url, sep = "\n  ")
+    # Get Sleeper data
+    out_df = RCurl::getURL(url) %>%
+      jsonlite::fromJSON(.) %>%
+      jsonlite::flatten(.) %>%
+      select(-any_of(drop_cols)) %>%
+      select(-contains(c("injury_","adp", "rec_", "_fd", "_pct", "_ppr",
+                         "season", "week", "years_exp", "rookie_year"))) %>%
+      `names<-`(gsub(x = names(.), pattern = "player.|stats.|metadata.", replacement = "")) %>%
+      tidyr::unite(player, first_name:last_name, sep = " ")
+    #%>% lapply(., unlist)
+
+    out_df = out_df %>%
+      `names<-`(sleeper_columns[colnames(out_df)])
+
+    # Get MFL ID
+    out_df$id = ffanalytics:::get_mfl_id(out_df$src_id,
+                                         player_name = out_df$player,
+                                         team = out_df$team,
+                                         pos = out_df$pos)
+    # Clean up and create some cols to match other sources
+    out_df = out_df %>%
+      mutate(
+        src_id = as.character(out_df$src_id),
+        site_fppg = site_pts/games,
+        data_src = "Sleeper") %>%
+      dplyr::select(id, src_id, pos, player, team, dplyr::everything())
+    Sys.sleep(2L)
+    out_df
+  })
+  # list elements named by position
+  names(l_pos) = pos
+  attr(l_pos, "season") = season
+  attr(l_pos, "week") = week
+  l_pos
+}
 
 
 
