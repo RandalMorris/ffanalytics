@@ -18,7 +18,7 @@
 scrape_data <- function(
   src = c("CBS", "ESPN", "FantasyPros", "FantasySharks", "FFToday",
           "FleaFlicker", "NumberFire", "FantasyFootballNerd", "NFL",
-          "RTSports", "Walterfootball"),
+          "RTSports", "Sleeper", "Walterfootball"),
   pos = c("QB", "RB", "WR", "TE", "K", "DST", "DL", "LB", "DB"),
   season = NULL, week = NULL, ...){
 
@@ -32,7 +32,7 @@ scrape_data <- function(
   src = match.arg(src, several.ok = TRUE,
                   c("CBS", "ESPN", "FantasyData", "FantasyPros", "FantasySharks", "FFToday",
                     "FleaFlicker", "NumberFire", "FantasyFootballNerd", "NFL",
-                    "RTSports","Walterfootball"))
+                    "RTSports","Sleeper", "Walterfootball"))
   pos = match.arg(pos, several.ok = TRUE,
                   c("QB", "RB", "WR", "TE", "K", "DST", "DL", "LB", "DB"))
 

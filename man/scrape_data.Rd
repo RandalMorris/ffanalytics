@@ -6,7 +6,7 @@
 \usage{
 scrape_data(
   src = c("CBS", "ESPN", "FantasyPros", "FantasySharks", "FFToday", "FleaFlicker",
-    "NumberFire", "FantasyFootballNerd", "NFL", "RTSports", "Walterfootball"),
+    "NumberFire", "FantasyFootballNerd", "NFL", "RTSports", "Sleeper", "Walterfootball"),
   pos = c("QB", "RB", "WR", "TE", "K", "DST", "DL", "LB", "DB"),
   season = NULL,
   week = NULL,
