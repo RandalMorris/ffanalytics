@@ -581,5 +581,11 @@ sleeper_columns = c(
   "rec_yd" = "rec_yds",
   "rec_td" = "rec_tds",
   "def_kr_td" = "return_tds",
-  "pts_std" = "site_pts"
-)
+  "pts_std" = "site_pts",
+  "blk_kick" = "dst_blk",
+  "fum_rec" = "dst_fum_rec",
+  "int" = "dst_int",
+  "dst_td" = "dst_td",
+  "safe" = "dst_safety",
+  "sack" = "dst_sacks"
+  )

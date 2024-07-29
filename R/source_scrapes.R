@@ -1286,7 +1286,7 @@ scrape_yahoo = function(pos = NULL, season = NULL, week = NULL,
 
 
 # Sleeper ----
-scrape_sleeper = function(pos = c("QB", "RB", "WR", "TE"), season = NULL, week = NULL,
+scrape_sleeper = function(pos = c("QB", "RB", "WR", "TE", "DST"), season = NULL, week = NULL,
                           draft = TRUE, weekly = FALSE) {
   message("\nThe Sleeper scrape uses a 2 second delay between pages")
 
@@ -1309,22 +1309,35 @@ scrape_sleeper = function(pos = c("QB", "RB", "WR", "TE"), season = NULL, week =
                 "player.metadata.years_exp_shift")
 
   l_pos <- lapply(pos, function(pos){
-
-    url = paste0(base_url, "?season_type=regular&position[]=", pos)
-    cat(paste0("Scraping ", pos, " projections from"), url, sep = "\n  ")
+    position = dplyr::case_when(
+      pos == "QB" ~ "QB",
+      pos == "RB" ~ "RB",
+      pos == "WR" ~ "WR",
+      pos == "TE" ~ "TE",
+      pos == "DST" ~ "DEF"
+    )
+    url = paste0(base_url, "?season_type=regular&position[]=", position)
+    cat(paste0("Scraping ", position, " projections from"), url, sep = "\n  ")
     # Get Sleeper data
     out_df = RCurl::getURL(url) %>%
       jsonlite::fromJSON(.) %>%
       jsonlite::flatten(.) %>%
       select(-any_of(drop_cols)) %>%
-      select(-contains(c("injury_","adp", "rec_", "_fd", "_pct", "_ppr",
+      select(-contains(c("injury_","adp", "rec_0","rec_1","rec_2","rec_3","rec_4","rec_5", "bonus_",
+                         "_fd", "_pct", "_ppr",
                          "season", "week", "years_exp", "rookie_year"))) %>%
       `names<-`(gsub(x = names(.), pattern = "player.|stats.|metadata.", replacement = "")) %>%
       tidyr::unite(player, first_name:last_name, sep = " ")
-    #%>% lapply(., unlist)
 
-    out_df = out_df %>%
-      `names<-`(sleeper_columns[colnames(out_df)])
+    if(position == "DEF") {
+      out_df = out_df %>%
+        mutate(dst_td = (def_fum_td + pass_int_td)) %>%
+        select(-contains(c("pts", "yds_", "metadata", "def_fum_td", "pass_int_td"))) %>%
+        `names<-`(sleeper_columns1[colnames(.)])
+    } else {
+      out_df = out_df %>%
+        `names<-`(sleeper_columns1[colnames(out_df)])
+    }
 
     # Get MFL ID
     out_df$id = ffanalytics:::get_mfl_id(out_df$src_id,
@@ -1334,8 +1347,6 @@ scrape_sleeper = function(pos = c("QB", "RB", "WR", "TE"), season = NULL, week =
     # Clean up and create some cols to match other sources
     out_df = out_df %>%
       mutate(
-        src_id = as.character(out_df$src_id),
-        site_fppg = site_pts/games,
         data_src = "Sleeper") %>%
       dplyr::select(id, src_id, pos, player, team, dplyr::everything())
     Sys.sleep(2L)
