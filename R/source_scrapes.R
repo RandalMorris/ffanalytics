@@ -1333,7 +1333,7 @@ scrape_sleeper = function(pos = c("QB", "RB", "WR", "TE", "DST"), season = NULL,
       out_df = out_df %>%
         mutate(dst_td = (def_fum_td + pass_int_td)) %>%
         select(-contains(c("pts", "yds_", "metadata", "def_fum_td", "pass_int_td"))) %>%
-        `names<-`(sleeper_columns[colnames(out_df)])
+        `names<-`(sleeper_columns[colnames(.)])
     } else {
       out_df = out_df %>%
         `names<-`(sleeper_columns[colnames(out_df)])
